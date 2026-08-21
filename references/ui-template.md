@@ -97,6 +97,10 @@ js:
 // ==== UILib 可复用 UI 渲染模块（奈雪影视技法蒸馏）====
 (function () {
   var UI = {};
+  // ★★ 必填：本源的引擎子页面 path（`pages` 里数据层那个引擎的 path，如 'iys'）。
+  // 首页自绘搜索框会用它 `$.require(UI.engine).search()` 跳回本源子页执行搜索。
+  // 不填或填错 → 首页点搜索无法回到本源引擎。接源时第一步就改成你的引擎 path。
+  UI.engine = '引擎path';   // TODO: 替换成你引擎子页的 path
   // 强调前缀：两个左引号+两个右引号。源文件里既可直接敲 ‘‘’’（全角字符），
   // 也可用转义写法 '\u2018\u2018\u2019\u2019'（奈雪影视实际就是用 \u2018 转义）。
   // 注意：在 JSON 里存成 "\\u2018\\u2018\\u2019\\u2019"（双反斜杠）会被 JSON 解析成 \u2018 转义；
@@ -240,16 +244,25 @@ js:
     if (!cls) {  // 首页模式（首页无分页，忽略 page 直接渲染，防止从筛选页返回首页时 page 残留）
       // 分类导航（首页也显示，首页按钮放第一位，点击进入分类模式）
       UI.navs(d, [{ title: '首页', id: '' }].concat(data.navs || []), '');
-      // 搜索框
-      if (data.search) {
-        d.push({
-          title: '🔍 搜索',
-          desc: data.search.placeholder || '',
-          url: "hiker://empty#noLoading##noHistory#@rule=js:$.require('" + (MY_RULE.title) + "').searchFrom(input)",
-          col_type: 'input'
-        });
-        d.push({ col_type: 'line_blank' });
+      // 搜索框（★ 必须开 fypage 子页再搜，绝不能内联直接跑 search()，否则 fetch 返回的 "error" 会被原生 ArticleListModel 当 URL 报 Expected URL scheme）
+  //   使用说明：先在模块顶部把引擎子页 path 赋给本模块变量（如 UI.engine='iys'），
+  //   否则默认要求你把自己的引擎子页 path 替换下方 `$.require(en)` 的执行参数。
+  if (data.search) {
+    d.push({
+      title: '🔍 搜索',
+      desc: data.search.placeholder || '',
+      url: 'hiker://empty?page=fypage#noLoading##noHistory#@rule=js:' + $.toString(function (en) {
+        if (input) { putMyVar('keyword', input); return $.require(en).search(); }
+        return 'hiker://empty';
+      }, UI.engine),
+      col_type: 'input',
+      extra: {
+        onChange: $.toString(function () { putMyVar('keyword', input); }),
+        defaultValue: getMyVar('keyword', '')
       }
+    });
+    d.push({ col_type: 'line_blank' });
+  }
       // 搜索下方历史/设置按钮（仅首页显示）
       UI.topBtns(d, data.topBtns);
       // 轮播：显示与否由设置页 banner_on 控制，首页不再含开关按钮
@@ -286,6 +299,46 @@ js:
       }
       setResult(d);
     }
+  };
+
+  // ---------- 搜索结果页 ----------
+  // 数据契约：data.items = [{ title, pic, desc, url }]（由引擎 search() 只取数据后 $.require('uil').renderSearch({items}) 交付）
+  // 渲染：首屏 loading（仅第1页）→ 结果列表 → 空态；setPreResult([]) 放 setResult(d) 前先清 loading。
+  UI.renderSearch = function (data) {
+    var d = [];
+    var items = data.items || [];
+
+    // ① 首屏先放 loading 占位，界面立即出现，数据随后 setResult 覆盖
+    if ((parseInt(MY_PAGE || '1', 10) || 1) == 1) {
+      var dL = [{
+        img: "http://123.56.105.145/weisyr/img/Loading1.gif",
+        url: "hiker://empty",
+        col_type: "pic_1_full",
+        extra: { id: "loading_" }
+      }];
+      setPreResult(dL);
+    }
+
+    // ② 渲染结果列表
+    for (var i = 0; i < items.length; i++) {
+      if (!items[i].title) continue;
+      d.push({
+        title: items[i].title || (items[i].name || ''),
+        pic_url: items[i].pic || '',
+        desc: items[i].desc || '',
+        url: items[i].url || 'javascript:;',
+        col_type: 'movie_3'
+      });
+    }
+
+    // ③ 空态提示（无结果时给用户明确反馈，而非白屏）
+    if (!d.length) {
+      d.push({ title: '未找到相关内容', desc: '请换个关键词重试', pic_url: '', url: 'javascript:;', col_type: 'list_1' });
+    }
+
+    // ④ 先清掉首屏 loading，再正式 setResult
+    setPreResult([]);
+    setResult(d);
   };
 
   // ---------- 详情页 ----------
