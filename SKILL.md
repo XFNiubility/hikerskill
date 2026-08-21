@@ -158,7 +158,7 @@ version: "v17"
 
 **自动获取 Cookie 并持久化（标准写法）**：
 ```js
-"preRule": "js:if(!getVar('cookie@xxx')){var res=JSON.parse(fetch('https://xxx.com',{withHeaders:true}));var c=JSON.stringify(res.headers);/(session=.*?);/.test(c);putVar2('cookie@xxx',RegExp.$1);}"
+"preRule": "js:if(!getVar('cookie@xxx')){var res=JSON.parse(fetch('https://xxx.com',{withHeaders:true}));var c=JSON.stringify(res.headers);/(session=.*?);/.test(c);putVar('cookie@xxx',RegExp.$1);}"
 ```
 
 **验证码 URL 声明**：
@@ -206,7 +206,7 @@ version: "v17"
 覆盖默认 UA（非空 `var ua=''` 的那种）：
 
 ```js
-"preRule": "js:putVar2('ua',';get;utf-8;{User-Agent@Mozilla/5.0 (Linux; Android 7.0; wv lite baiduboxapp) ...}')"
+"preRule": "js:putVar('ua',';get;utf-8;{User-Agent@Mozilla/5.0 (Linux; Android 7.0; wv lite baiduboxapp) ...}')"
 ```
 
 ```js
@@ -228,7 +228,7 @@ version: "v17"
 3. **依赖检查放最前面**：第三方模板缺失时弹窗引导，比直接报错友好。
 4. **preRule 里不要写复杂 UI 逻辑**：只做数据准备（Cookie/变量/配置），UI 交互放 `find_rule`/`detail_find_rule`。
 5. **多个 preRule 行为可串联**：`require('a.js');initConfig({...});if(!getVar('ck'))getCookie();` 一行写完。
-6. **跨页面的公共变量用 `putVar2`**（会话+持久双写），单次请求的临时变量用 `putVar`。
+6. **跨页面的公共变量用 `putMyVar`**（规则内共享），单次请求的临时变量用 `putVar`。
 
 ## 特殊协议链接与页面标识
 
@@ -422,6 +422,7 @@ TMDB 类第三方：多候选 API 域名数组 + Bearer token + TTL 缓存 + 图
 - `references/examples/distillation-pipeline.md` — **提炼管线（自我进化入口）**：把用户提供的真实规则/新源按标准流程蒸馏成可复用范式，规范吸收什么样的知识、怎么吸收、沉淀到哪里
 - `references/examples/verified-pitfalls.md` — **已验证实战坑（新增）**：多站点实测有效的落地细节——`@rule=` 链接级强接管（详情不再跳原网页）、自绘搜索框 `@rule` 接本源 search、多线路播放区分直链/需解析、RSA 分块解密等；写源前后必看，避开即可满分
 - `references/search-implementation.md` — **搜索实现规范（数据层/渲染层分离，实测验证）**：顶层 `search_url`+`searchFind` 只转发、引擎 `search()` 只取数据、UILib `renderSearch(data)` 接管 loading+空态+渲染的三层拆解，含各层完整代码、数据契约字段名、以及"首页自绘搜索框必须开 `hiker://empty?page=fypage` 子页再搜（否则 `fetch` 返回的 `"error"` 被原生 ArticleListModel 当 URL，报 `Expected URL scheme...`）"的关键坑。写带搜索功能的视频/漫画类源时，搜索部分直接套这套三层规范。
+- `references/examples/eco-corpus-distillation.md` / `references/examples/backtest-report.md` — **历史分析存档（非写源模板）**：2070 源全量语料蒸馏与回测报告，所含范式均已并入 `SKILL.md` 正文及各参考文件，保留仅供追溯，请勿作为写源模板直接套用。
 
 ## 实战案例分析（写作范式来源）
 

@@ -17,14 +17,14 @@
 ```json
 {
   "search_url": "hiker://empty?kw=**",
-  "searchFind": "js:putMyVar('keyword', getParam('kw'));$.require('iys').search()"
+  "searchFind": "js:putMyVar('keyword', MY_KEYWORD||getParam('kw'));$.require('iys').search()"
 }
 ```
 
 要点：
 
 - **`search_url` 用占位地址（`hiker://empty?kw=**`）**：不指向任何真实抓取页，避免海阔原生搜索去请求一个无关页面。关键词 `**` 占位符保留。
-- **`searchFind` 只做两件事**：① 把海阔传进来的 `kw` 参数写入规则内变量 `keyword`（`putMyVar('keyword', getParam('kw'))`）；② 一行转发到引擎 `search()`（`$.require("引擎名").search()`）。
+- **`searchFind` 只做两件事**：① 把海阔传入的关键词写入规则内变量 `keyword`（优先读内置变量 `MY_KEYWORD`，占位 URL 的参数不可靠，`getParam('kw')` 只作兜底）；② 一行转发到引擎 `search()`（`$.require("引擎名").search()`）。
 - **关键词统一用 `keyword` 这个 myVar 变量名**（与首页自绘搜索框的 `onChange` 写入保持一致），`search()` 里再兼容读取 `MY_KEYWORD` 兜底。
 
 ---

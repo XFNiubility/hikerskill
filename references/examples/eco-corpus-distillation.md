@@ -175,7 +175,7 @@ if(!getVar("cookie@xxx")){
     var res=JSON.parse(fetch("https://xxx.com",{withHeaders:true}));
     var cookie=JSON.stringify(res.headers);
     /(session=.*?);/.test(cookie);
-    putVar2("cookie@xxx", RegExp.$1);
+    putVar("cookie@xxx", RegExp.$1);
 }
 ```
 

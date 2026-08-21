@@ -238,7 +238,7 @@ js:
   // ---------- 首页 ----------
   UI.renderHome = function (data) {
     var d = [];
-    var page = parseInt(MY_PAGE || '1', 10);
+    var page = MY_PAGE;
     var cls = String(getMyVar('sd_cls', ''));
 
     if (!cls) {  // 首页模式（首页无分页，忽略 page 直接渲染，防止从筛选页返回首页时 page 残留）
@@ -309,7 +309,7 @@ js:
     var items = data.items || [];
 
     // ① 首屏先放 loading 占位，界面立即出现，数据随后 setResult 覆盖
-    if ((parseInt(MY_PAGE || '1', 10) || 1) == 1) {
+    if (MY_PAGE == 1) {
       var dL = [{
         img: "http://123.56.105.145/weisyr/img/Loading1.gif",
         url: "hiker://empty",

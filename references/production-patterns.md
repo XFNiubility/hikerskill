@@ -221,12 +221,12 @@ preRule 不仅仅是"JS 预处理"。2070 源中 731 个有 preRule，用途分�
 
 1. **远程公共库加载（最主流，363源）**：仅 `require('https://.../预处理.js')`，无其他逻辑。一个库养几百个源。
 2. **initConfig 配置（88源）**：`initConfig({依赖: '...', 模板: '...', 分类颜色: '#...'})`，注入依赖脚本和主题。
-3. **Cookie/登录/验证码（30源）**：`fetch` 带 `withHeaders:true` 取响应头 → regex 提取 session/token → `putVar2` 存。验证码 URL 声明。
+3. **Cookie/登录/验证码（30源）**：`fetch` 带 `withHeaders:true` 取响应头 → regex 提取 session/token → `putVar` 存。验证码 URL 声明。
 4. **eval(fetch) 远程执行（27源）**：从远程/加密源拉取并执行代码，`eval(base64Decode('...'))` 或 `eval(fetch('hiker://files/...'))`。
 5. **confirm/request 依赖检查（17源）**：`request('hiker://home@模板·Q') == 'null'` 判依赖 → `confirm({title:'依赖检测', content:'缺少依赖', confirm:()=>导入口令})`。
-6. **动态 UA 设置（7源）**：`putVar2('ua',';get;utf-8;{User-Agent@...}')` 覆盖默认 UA。
+6. **动态 UA 设置（7源）**：`putVar('ua',';get;utf-8;{User-Agent@...}')` 覆盖默认 UA。
 
-**写源启示**：需要预处理的场景优先走 `initConfig` 或 `require(远程库)`，需要登录态的先 `fetch` + `withHeaders:true` 取 Cookie 再用 `putVar2` 存，需要依赖检测的用 `request('hiker://home@依赖源') == 'null'` 弹窗引导。
+**写源启示**：需要预处理的场景优先走 `initConfig` 或 `require(远程库)`，需要登录态的先 `fetch` + `withHeaders:true` 取 Cookie 再用 `putVar` 存，需要依赖检测的用 `request('hiker://home@依赖源') == 'null'` 弹窗引导。
 
 ## 非视频类型速查（live/news/read/cartoon）
 
