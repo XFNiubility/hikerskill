@@ -1,7 +1,7 @@
 ---
 name: "haikuo-miniapp"
 description: "帮助 AI 编写海阔视界/嗅觉浏览器（HikerView）的规则型小程序（rule.json）。适用场景：用户要求为海阔视界写规则/写小程序、给某个网站做解析或播放源、制作视频/音频/漫画/阅读等类型的小程序。"
-version: "v11"
+version: "v16"
 ---
 
 # 海阔小程序开发（HikerView Mini-program）

@@ -45,6 +45,9 @@ var data = {
   search: {         // 搜索框（可选）
     placeholder: "搜索电影,电视剧..."
   },
+  topBtns: {         // 搜索旁历史按钮（可选，默认显示 🕐🛠️）
+    setting: "settings"  // 可选，长按/设置跳转的子页面 path，默认 "settings"
+  },
   banner: {         // 轮播（可选）
     items: [...],   // 复用首页第1分区的 items 或自定义
     time: 4000, switchable: true
@@ -53,6 +56,8 @@ var data = {
 };
 $.require("uil").renderHome(data);
 ```
+
+> 搜索下方历史/设置按钮（青豆写法，**仅首页模式显示**）：`avatar` 行紧贴搜索框下方，`pic_url` 用系统图 `hiker://images/icon3`，`desc` 直接两个图标 `🕐 🛠️`（不加强调前缀/颜色）。**单击**进历史记录页 `hiker://history?rule=<源名>#noRecordHistory#`；**长按**弹菜单：🛠️管理(history) / ⭐收藏(collection) / ⚙️设置(跳 `hiker://page/<setting>`)。设置子页面默认 `path:"settings"`（各源按"设置子页面骨架"放配置项）。分类模式（筛选页）不显示此按钮。
 
 ### 2.2 `renderDetail(data)` —— 详情页
 
@@ -66,6 +71,8 @@ var data = {
   tvbox: {                           // 可选，TVBox 推送能力
     pushData: { name, pic, content, from, url } // 可选，推送当前列表用
   },
+  tvboxShow: true,                   // 可选，源级开关：设 false 隐藏整块 TVBox 推送区块，默认显示
+                                     // 只控制"是否渲染"，不动 UI.tvboxUI 与 push 子页代码
   lines: [                           // 线路（至少 1）
     { name: "线路1", episodes: [{ name, url }] }
   ],
@@ -135,21 +142,6 @@ js:
     }, { id: id, data: items }));
   };
 
-  // 轮播开关按钮
-  UI.bannerSwitch = function (d, key) {
-    var on = getMyVar(key, 'true') == 'true';
-    d.push({
-      title: on ? Q + '<b><font color="#FF5D50">轮播 ON</font></b>' : Q + '<b>轮播 OFF</b>',
-      url: $('#noLoading#').lazyRule(function (k) {
-        var cur = getMyVar(k, 'true');
-        putMyVar(k, cur == 'true' ? 'false' : 'true');
-        refreshPage(true); return 'hiker://empty';
-      }, key),
-      col_type: 'scroll_button',
-      extra: { backgroundColor: on ? '#20FA7298' : '#20CCCCCC' }
-    });
-  };
-
   // 分类导航（scroll_button，高亮）。注意点首页时必须同时清全局筛选，否则返回首页残留筛选/分页状态。
   UI.navs = function (d, navs, current) {
     for (var i = 0; i < navs.length; i++) {
@@ -216,6 +208,29 @@ js:
     });
   };
 
+  // 搜索下方历史/设置按钮：avatar 行紧贴搜索框下方，使用系统图标 icon3。
+  // 单击 → 进历史记录页(hiker://history?rule=<源名>#noRecordHistory#)；
+  // desc 直接两个图标 "🕐 🛠️"；长按弹菜单：🛠️管理 / ⭐收藏 / ⚙️设置。
+  // 依赖：setting 子页面（默认 path "settings"，可用 cfg.setting 覆盖）。
+  UI.topBtns = function (d, cfg) {
+    var setting = (cfg && cfg.setting) || 'settings';
+    var rule = MY_RULE.title;
+    d.push({
+      url: 'hiker://history?rule=' + rule + '#noRecordHistory#',
+      pic_url: 'hiker://images/icon3',
+      desc: '🕐 🛠️',
+      col_type: 'avatar',
+      title: '',
+      extra: {
+        longClick: [
+          { title: '🛠️ 管理', js: $.toString(function (r) { return 'hiker://history?rule=' + r; }, rule) },
+          { title: '⭐ 收藏', js: $.toString(function (r) { return 'hiker://collection?rule=' + r; }, rule) },
+          { title: '⚙️ 设置', js: $.toString(function (s) { return 'hiker://page/' + s + '#noHistory##noRecordHistory#'; }, setting) }
+        ]
+      }
+    });
+  };
+
   // ---------- 首页 ----------
   UI.renderHome = function (data) {
     var d = [];
@@ -235,13 +250,12 @@ js:
         });
         d.push({ col_type: 'line_blank' });
       }
-      // 轮播开关 + 轮播
-      if (data.banner) {
-        if (data.banner.switchable) UI.bannerSwitch(d, 'banner_on');
-        if (getMyVar('banner_on', 'true') == 'true') {
-          UI.banner(d, { items: data.banner.items || [], time: data.banner.time || 4000 });
-          d.push({ col_type: 'line_blank' });
-        }
+      // 搜索下方历史/设置按钮（仅首页显示）
+      UI.topBtns(d, data.topBtns);
+      // 轮播：显示与否由设置页 banner_on 控制，首页不再含开关按钮
+      if (data.banner && getItem('banner_on', 'true') == 'true') {
+        UI.banner(d, { items: data.banner.items || [], time: data.banner.time || 4000 });
+        d.push({ col_type: 'line_blank' });
       }
       // 分区
       for (var si = 0; si < data.sections.length; si++) {
@@ -289,8 +303,8 @@ js:
     // ② 简介 setDesc
     if (data.intro) UI.setDesc(d, data.intro, 60);
     d.push({ col_type: 'line' });
-    // ③ 快速搜索（可选）
-    if (data.quickSearch && data.quickSearch.length) {
+    // ③ 快速搜索（可选，受设置页开关 quickSearch_on 控制）
+    if (getItem('quickSearch_on', 'true') == 'true' && data.quickSearch && data.quickSearch.length) {
       var qTitle = ''; try { qTitle = getPageTitle(); } catch (e) {}
       for (var q = 0; q < data.quickSearch.length; q++) {
         var qo = data.quickSearch[q];
@@ -303,25 +317,12 @@ js:
       }
       d.push({ col_type: 'line_blank' });
     }
-    // ④ TVBox 推送（可选）
-    if (data.tvbox) UI.tvboxUI(d, data.tvbox);
-    // ⑤ 线路 + 排序 + 剧集
+    // ④ TVBox 推送区域（默认显示；设置页 tvbox_on 真值 + 数据变量 tvboxShow 仍非 false 才渲染。UI.tvboxUI、webpush 单集推送按钮与 push 子页原样不改）
+    if (getItem('tvbox_on', 'true') == 'true' && data.tvboxShow !== false && data.tvbox) UI.tvboxUI(d, data.tvbox);
+    // ⑤ 排序（在最前）+ 线路 + 剧集
     var lines = data.lines || [];
     var cur = parseInt(getMyVar('sd_line', '0'), 10);
     if (cur < 0 || cur >= lines.length) cur = 0;
-    if (lines.length > 1) {
-      for (var li = 0; li < lines.length; li++) {
-        var active = li === cur;
-        d.push({
-          title: UI.hi(lines[li].name, active), col_type: 'scroll_button',
-          url: $('#noLoading#').lazyRule(function (idx) {
-            putMyVar('sd_line', String(idx)); refreshPage(); return 'hiker://empty';
-          }, li),
-          extra: { backgroundColor: active ? '#20FA7298' : '', textSize: 14 }
-        });
-      }
-      d.push({ col_type: 'blank_block', extra: { height: 8 } });
-    }
     if (data.sortable) {
       var sort = getMyVar('sd_sort', 'asc');
       d.push({
@@ -332,8 +333,20 @@ js:
         }, sort),
         extra: { backgroundColor: '#EEEEEE', textSize: 14 }
       });
-      d.push({ col_type: 'blank_block', extra: { height: 8 } });
     }
+    if (lines.length > 1) {
+      for (var li = 0; li < lines.length; li++) {
+        var active = li === cur;
+        d.push({
+          title: UI.hi(lines[li].name, active), col_type: 'scroll_button',
+          url: $('#noLoading#').lazyRule(function (idx) {
+            putMyVar('sd_line', String(idx)); refreshPage(); return 'hiker://empty';
+          }, li),
+          extra: { backgroundColor: active ? '#20FA7298' : '', textSize: 14 }
+      });
+      }
+    }
+    d.push({ col_type: 'blank_block', extra: { height: 8 } });
     var eps = (lines[cur] && lines[cur].episodes) || [];
     if (data.sortable && getMyVar('sd_sort', 'asc') === 'desc') eps = eps.slice().reverse();
     var ct = eps.length > 50 ? 'text_5' : eps.length > 20 ? 'text_4' : eps.length > 8 ? 'text_3' : 'text_2';
@@ -636,6 +649,7 @@ function detailData() {
     intro: '剧情简介文本',                    // setDesc 折叠由 UILib 做
     quickSearch: [{ name, pic, rule }],       // 快速搜索图标栏
     tvbox: { pushData: { name, pic, content, from, url } },  // TVBox 推送数据
+    tvboxShow: true,                          // 源级开关：false 隐藏整块推送区块（可不写，默认显示）
     lines: [{ name, episodes: [{ name, url }] }],  // 线路 + 剧集（**url 须为最终可播地址**）
     sortable: true                            // 剧集正/倒序
   };
@@ -737,19 +751,67 @@ UILib 模式下，`pages` 数组里至少有 **3 个子页面**，职责各一�
 | renderHome | `navs[].title/id` | string | | 分类导航 |
 | renderHome | `filters[].label/key/options` | object[] | | 折叠筛选 |
 | renderHome | `banner.items/time/switchable` | object | | 轮播+开关 |
+| renderHome | `topBtns.setting` | string | | 设置子页面 path，默认 `settings` |
 | renderDetail | `poster.title/desc/pic/url` | object | ✅ | 海报卡 |
 | renderDetail | `intro` | string | | 折叠简介 |
 | renderDetail | `lines[].name/episodes[]` | object[] | ✅ | 线路+剧集 |
 | renderDetail | `quickSearch[].name/pic/rule` | object[] | | 快速搜索 |
 | renderDetail | `tvbox.pushData` | object | | TVBox 推送 |
+| renderDetail | `tvboxShow` | boolean | | 源级开关，默认 true；false 隐藏整块 TVBox 推送区块 |
+
+---
+
+## 五·五、设置子页面骨架（历史/设置按钮默认跳到这里）
+
+顶部"设置"按钮默认跳 `hiker://page/settings`。`pages` 里需有 `path:"settings"` 的子页面；它是一份**普通列页面**，里面放源的配置项（用 `text_1` 开关 + `setItem` 持久化）。默认已内置三个功能开关：**轮播开关** `banner_on`（控制首页轮播显示）、**快速搜索开关** `quickSearch_on`、**TVBox推送开关** `tvbox_on`（值域均 `true/false`，其中 `tvbox_on` 控制详情页整块 TVBox 推送区域的显示，与 renderDetail 判断一致）。开关改动即时生效，可在骨架下方继续追加其它配置项。
+
+```jsonc
+// pages[] 里新增：
+{ "name": "设置", "path": "settings", "col_type": "text_1", "rule": "js: $.require('SETTINGS_页path').main()" }
+```
+
+```js
+// path:"settings" 的 rule（数据层放一个 main()）：
+js:(function () {
+  var d = [];
+  // 标题头
+  d.push({ title: '设置', col_type: 'text_center_1' });
+  d.push({ col_type: 'blank_block' });
+
+  // 通用开关渲染（setItem 持久化，取值 'true'/'false'）
+  function sw(key, label, def) {
+    var on = getItem(key, def) == 'true';
+    d.push({
+      title: (on ? '✅ ' : '⬜ ') + label,
+      url: $('#noLoading#').lazyRule(function (k, dflt) {
+        var cur = getItem(k, dflt) == 'true';
+        setItem(k, cur ? 'false' : 'true');
+        refreshPage(false); return 'hiker://empty';
+      }, key, def),
+      col_type: 'text_1'
+    });
+  }
+
+  d.push({ title: '● 功能开关（立即生效）', col_type: 'text_center_1' });
+  sw('banner_on', '轮播开关', 'true');          // 首页轮播显示开关（首页轮播渲染时读它，首页不含开关按钮）
+  sw('quickSearch_on', '快速搜索开关', 'true');  // 详情页快速搜索栏
+  sw('tvbox_on', 'TVBox推送开关', 'true');       // 详情页整块 TVBox 推送区域（默认开，值域 true/false，与 renderDetail 判断一致）
+
+  d.push({ col_type: 'blank_block' });
+  setResult(d);
+})()
+```
 
 ---
 
 ## 六、验证清单
 
 - [ ] 首页渲染出：搜索框 + 轮播(开关) + 分区（首块 movie_2 其余 movie_3）
+- [ ] 首页搜索框下方历史按钮：avatar(icon3) 显示 🕐 🛠️；单击进 history，长按弹 🛠️管理/⭐收藏/⚙️设置；设置跳 settings 子页；分类(筛选)页不显示
+- [ ] 设置页含三个开关：轮播(banner_on)、快速搜索(quickSearch_on)、TVBox(tvbox_on)，切换即时生效
 - [ ] 分类模式：`sd_cls` 切换分类，折叠筛选置顶，`refreshPage` 生效
-- [ ] 详情页：海报卡 + 折叠简介 + 线路切换 + 排序 + 剧集（动态列数）
+- [ ] 详情页：海报卡 + 折叠简介 + 线路切换 + 排序 + 剧集（动态列数）；排序按钮与分线同排、不另起一行
 - [ ] 快速搜索：`hiker://search?s=&rule=` 或 `copy://` 都能跳
-- [ ] TVBox：webpush 开关、IP 设置、推列表均可用
+- [ ] TVBox：tvbox_on 开关（关→整块推送区域隐藏）、IP 设置、推列表均可用
+- [ ] 详情页数据里 `tvboxShow:false` 时整块 TVBox 推送区块被隐藏，且 `UI.tvboxUI`/push 子页代码未被改动
 - [ ] 强调前缀已用 `‘’‘’`（`\u2018\u2018\u2019\u2019`）
